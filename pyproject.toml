@@ -1,0 +1,18 @@
+[project]
+name = "ets-bus-times"
+version = "0.1.0"
+description = "ETS live bus departure times"
+requires-python = ">=3.9"
+dependencies = [
+    "flet",
+    "protobuf",
+    "gtfs-realtime-bindings",
+]
+
+[tool.flet]
+org = "org.etsbustimes"
+product = "ETS Bus Times"
+company = "etsbustimes"
+
+[tool.flet.app]
+path = "."

@@ -1,50 +1,45 @@
 """
-ETS Bus Times - Kivy mobile app version.
+ETS Bus Times - Flet version.
 
-Wraps the same logic as the desktop ets_next_departures.py script in a
-simple touch UI: enter one or more stop IDs, tap Refresh, see a list of
-upcoming departures. Static schedule is cached daily; realtime delay
-lookup is attempted on every refresh and silently skipped if unavailable.
+Same logic as the desktop/Kivy versions, wrapped in a Flet UI (modern,
+Flutter-based look). Stop IDs are baked in below - no input needed.
 """
 
-import csv
-import io
 import os
 import re
+import time
 import threading
 import zipfile
+import io
 from datetime import datetime, timedelta
 
 import urllib.request
 import urllib.error
 
-from kivy.app import App
-from kivy.clock import Clock
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.scrollview import ScrollView
+import flet as ft
 
 GTFS_URL = "https://gtfs.edmonton.ca/TMGTFSRealTimeWebService/GTFS/gtfs.zip"
 REALTIME_URL = "https://gtfs.edmonton.ca/TMGTFSRealTimeWebService/TripUpdate/TripUpdates.pb"
 BROWSER_HEADERS = {"User-Agent": "Mozilla/5.0 (Android)"}
 
+# Your stops - baked in so nothing needs to be entered
+STOP_IDS = ["4084", "4062"]
+
 
 def cache_dir():
-    # App.user_data_dir resolves to proper app-private storage on Android
-    return App.get_running_app().user_data_dir
+    # Flet guarantees this env var points to a writable, app-private,
+    # persistent directory on every platform (mobile, desktop, etc).
+    d = os.getenv("FLET_APP_STORAGE_DATA") or os.getcwd()
+    os.makedirs(d, exist_ok=True)
+    return d
 
 
 def download_gtfs():
-    cd = cache_dir()
-    os.makedirs(cd, exist_ok=True)
-    zip_path = os.path.join(cd, "gtfs.zip")
     req = urllib.request.Request(GTFS_URL, headers=BROWSER_HEADERS)
     with urllib.request.urlopen(req, timeout=30) as resp:
         data = resp.read()
-    with open(zip_path, "wb") as f:
-        f.write(data)
 
+    cd = cache_dir()
     with zipfile.ZipFile(io.BytesIO(data)) as z:
         for name, dest in [
             ("stop_times.txt", "stop_times.csv"),
@@ -60,9 +55,20 @@ def is_cached():
 
 
 def load_csv_dict(name):
+    import csv
     path = os.path.join(cache_dir(), name)
     with open(path, newline="", encoding="utf-8-sig") as f:
         return list(csv.DictReader(f))
+
+
+def iter_matching_stop_times(stop_id_set):
+    import csv
+    path = os.path.join(cache_dir(), "stop_times.csv")
+    with open(path, newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row["stop_id"] in stop_id_set:
+                yield row
 
 
 def parse_gtfs_time(t):
@@ -105,15 +111,6 @@ def get_delay_seconds(feed, trip_id, stop_id):
         if tu.HasField("delay"):
             return tu.delay
     return 0
-
-
-def iter_matching_stop_times(stop_id_set):
-    path = os.path.join(cache_dir(), "stop_times.csv")
-    with open(path, newline="", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if row["stop_id"] in stop_id_set:
-                yield row
 
 
 def next_departures(stop_ids, limit=8, window_minutes=180):
@@ -168,80 +165,87 @@ def next_departures(stop_ids, limit=8, window_minutes=180):
     return deduped[:limit]
 
 
-# Your stops - baked in so nothing needs to be entered
-STOP_IDS = ["4084", "4062"]
+def main(page: ft.Page):
+    page.title = "ETS Bus Times"
+    page.padding = 15
+    page.horizontal_alignment = ft.CrossAxisAlignment.STRETCH
 
+    status_text = ft.Text("Loading...", size=13, color="#888888")
+    results_column = ft.Column(spacing=10, expand=True, scroll=ft.ScrollMode.AUTO)
 
-class ETSApp(App):
-    def build(self):
-        self.title = "ETS Bus Times"
-        root = BoxLayout(orientation="vertical", padding=10, spacing=10)
-
-        btn_row = BoxLayout(size_hint=(1, None), height=48, spacing=10)
-        self.refresh_btn = Button(text="Refresh Now")
-        self.refresh_btn.bind(on_press=lambda *_: self.refresh(force_download=False))
-        self.resync_btn = Button(text="Re-sync Schedule")
-        self.resync_btn.bind(on_press=lambda *_: self.refresh(force_download=True))
-        btn_row.add_widget(self.refresh_btn)
-        btn_row.add_widget(self.resync_btn)
-        root.add_widget(btn_row)
-
-        self.status_label = Label(text="", size_hint=(1, None), height=30)
-        root.add_widget(self.status_label)
-
-        scroll = ScrollView()
-        self.results_label = Label(
-            text="Loading...",
-            size_hint=(1, None), halign="left", valign="top",
+    def build_result_card(d):
+        delay_note = ""
+        if d["delay_minutes"] > 0:
+            delay_note = f"  (+{d['delay_minutes']}m)"
+        elif d["delay_minutes"] < 0:
+            delay_note = f"  ({d['delay_minutes']}m)"
+        return ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text(
+                        f"[{d['stop_id']}] Route {d['route']} \u2014 {d['headsign']}",
+                        weight=ft.FontWeight.BOLD, size=15,
+                    ),
+                    ft.Text(
+                        f"Sched {d['scheduled_time']}    Live {d['expected_time']}    "
+                        f"{d['minutes_away']} min{delay_note}",
+                        size=13, color="#555555",
+                    ),
+                ],
+                spacing=2,
+            ),
+            padding=10,
+            border=ft.border.all(1, "#dddddd"),
+            border_radius=8,
         )
-        self.results_label.bind(texture_size=self._update_label_height)
-        scroll.add_widget(self.results_label)
-        root.add_widget(scroll)
 
-        # Auto-refresh every hour
-        Clock.schedule_interval(lambda *_: self.refresh(force_download=False), 3600)
-        # Load immediately on open - no tap required
-        Clock.schedule_once(lambda *_: self.refresh(force_download=False), 0)
+    def refresh(force_download=True):
+        status_text.value = "Loading..."
+        page.update()
+        threading.Thread(target=worker, args=(force_download,), daemon=True).start()
 
-        return root
-
-    def _update_label_height(self, instance, size):
-        instance.height = size[1]
-        instance.text_size = (instance.width, None)
-
-    def set_status(self, text):
-        self.status_label.text = text
-
-    def refresh(self, force_download=False):
-        self.set_status("Loading...")
-        threading.Thread(target=self._refresh_worker, args=(force_download,), daemon=True).start()
-
-    def _refresh_worker(self, force_download):
+    def worker(force_download):
         try:
-            stop_ids = STOP_IDS
             if force_download or not is_cached():
                 download_gtfs()
-            deps = next_departures(stop_ids)
-            lines = [f"Current Time: {datetime.now().strftime('%I:%M %p').lstrip('0')}", ""]
-            for d in deps:
-                delay = f"  (+{d['delay_minutes']}m)" if d["delay_minutes"] > 0 else (
-                    f"  ({d['delay_minutes']}m)" if d["delay_minutes"] < 0 else "")
-                lines.append(
-                    f"[{d['stop_id']}] Route {d['route']} - {d['headsign']}\n"
-                    f"   Sched {d['scheduled_time']}   Live {d['expected_time']}   "
-                    f"{d['minutes_away']} min{delay}"
-                )
-            if not deps:
-                lines.append("No upcoming departures found in the next 3 hours.")
-            text = "\n\n".join(lines)
-            Clock.schedule_once(lambda *_: self._show_results(text, "Updated."))
-        except Exception as e:
-            Clock.schedule_once(lambda *_: self.set_status(f"Error: {e}"))
+            deps = next_departures(STOP_IDS)
 
-    def _show_results(self, text, status):
-        self.results_label.text = text
-        self.set_status(status)
+            results_column.controls.clear()
+            if not deps:
+                results_column.controls.append(
+                    ft.Text("No upcoming departures found in the next 3 hours.")
+                )
+            for d in deps:
+                results_column.controls.append(build_result_card(d))
+
+            status_text.value = (
+                f"Current Time: {datetime.now().strftime('%I:%M %p').lstrip('0')}"
+            )
+        except Exception as e:
+            status_text.value = f"Error: {e}"
+        page.update()
+
+    refresh_btn = ft.ElevatedButton("Refresh", on_click=lambda e: refresh(True))
+
+    page.add(
+        ft.Column(
+            [refresh_btn, status_text, ft.Divider(height=1), results_column],
+            expand=True,
+            spacing=10,
+        )
+    )
+
+    # Load immediately on open - no tap required
+    refresh(force_download=False)
+
+    # Auto-refresh every hour in the background
+    def auto_loop():
+        while True:
+            time.sleep(3600)
+            refresh(force_download=False)
+
+    threading.Thread(target=auto_loop, daemon=True).start()
 
 
 if __name__ == "__main__":
-    ETSApp().run()
+    ft.app(target=main)
