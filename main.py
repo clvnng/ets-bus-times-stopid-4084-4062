@@ -170,7 +170,7 @@ def main(page: ft.Page):
     page.padding = 15
     page.horizontal_alignment = ft.CrossAxisAlignment.STRETCH
 
-    status_text = ft.Text("Loading...", size=13, color="#888888")
+    status_text = ft.Text("Loading...", size=15, color="#888888")
     results_column = ft.Column(spacing=10, expand=True, scroll=ft.ScrollMode.AUTO)
 
     def build_result_card(d):
@@ -189,7 +189,7 @@ def main(page: ft.Page):
                     ft.Text(
                         f"Sched {d['scheduled_time']}    Live {d['expected_time']}    "
                         f"{d['minutes_away']} min{delay_note}",
-                        size=13, color="#555555",
+                        size=15, color="#aaaaaa",
                     ),
                 ],
                 spacing=2,
@@ -237,10 +237,10 @@ def main(page: ft.Page):
         ft.SafeArea(
             content=ft.Column(
                 [
-                    ft.Row([refresh_btn], alignment=ft.MainAxisAlignment.CENTER),
                     status_text,
                     ft.Divider(height=1),
                     results_column,
+                    ft.Row([refresh_btn], alignment=ft.MainAxisAlignment.CENTER),
                 ],
                 expand=True,
                 spacing=10,
