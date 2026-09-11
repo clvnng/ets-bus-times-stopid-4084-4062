@@ -208,7 +208,7 @@ def main(page: ft.Page):
         try:
             if force_download or not is_cached():
                 download_gtfs()
-            deps = next_departures(STOP_IDS)
+            deps = next_departures(STOP_IDS, limit=6)
 
             results_column.controls.clear()
             if not deps:
@@ -225,15 +225,31 @@ def main(page: ft.Page):
             status_text.value = f"Error: {e}"
         page.update()
 
-    refresh_btn = ft.ElevatedButton("Refresh", on_click=lambda e: refresh(True))
+    refresh_btn = ft.ElevatedButton(
+        "Refresh",
+        on_click=lambda e: refresh(True),
+        width=200,
+        height=55,
+        style=ft.ButtonStyle(text_style=ft.TextStyle(size=18)),
+    )
 
     page.add(
-        ft.Column(
-            [refresh_btn, status_text, ft.Divider(height=1), results_column],
+        ft.SafeArea(
+            content=ft.Column(
+                [
+                    ft.Row([refresh_btn], alignment=ft.MainAxisAlignment.CENTER),
+                    status_text,
+                    ft.Divider(height=1),
+                    results_column,
+                ],
+                expand=True,
+                spacing=10,
+            ),
             expand=True,
-            spacing=10,
         )
     )
+
+    page.update()
 
     # Load immediately on open - no tap required
     refresh(force_download=False)
