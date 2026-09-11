@@ -22,7 +22,8 @@ source.exclude_dirs = tests, bin, venv, .git, .github
 version = 0.1
 
 # (list) Application requirements
-requirements = python3,kivy==2.3.0
+# Note: Hostpython3 and setuptools ensure proper native toolchain compilation
+requirements = python3,kivy==2.3.0,hostpython3,setuptools
 
 # (str) Supported orientations (landscape, sensorLandscape, portrait, or all)
 orientation = portrait
@@ -34,7 +35,7 @@ fullscreen = 0
 # Android specific
 #
 
-# (int) Target Android API level
+# (int) Target Android API level (34 aligns with standard Play Store targets)
 android.api = 34
 
 # (int) Minimum API supported by your APK
@@ -55,11 +56,17 @@ android.enable_androidx = True
 # (str) Android logcat output filters
 android.logcat_filters = *:S python:D
 
-# (str) Android build architecture
+# (str) Android build architectures
 android.archs = arm64-v8a, armeabi-v7a
 
 # (bool) Allow backup of application data
 android.allow_backup = True
+
+# (str) Bootstrap to use for the application
+android.bootstrap = sdl2
+
+# (str) python-for-android git branch to use
+p4a.branch = master
 
 [buildozer]
 
