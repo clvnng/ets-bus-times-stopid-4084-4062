@@ -35,7 +35,7 @@ jobs:
             ffmpeg \
             libsdl2-dev \
             libsdl2-image-dev \
-            libsdl2-mixin-dev \
+            libsdl2-mixer-dev \
             libsdl2-ttf-dev \
             libportmidi-dev \
             libswscale-dev \
@@ -50,12 +50,10 @@ jobs:
             libffi-dev \
             libgdbm-dev \
             libncursesw5-dev \
-            libreadline-gplv2-dev \
-            libsqlite3-dev \
+            libreadline-dev \
             tk-dev \
             gfortran \
             liblzma-dev \
-            libffi-dev \
             autoconf \
             libtool \
             pkg-config \
@@ -70,7 +68,7 @@ jobs:
 
       - name: Build APK with Buildozer
         run: |
-          # The --accept-sdk-license flag prevents interactive prompt failures
+          # --accept-sdk-license prevents interactive prompts that break the CI run
           buildozer -v android debug --accept-sdk-license
 
       - name: Upload APK Artifact
