@@ -195,7 +195,7 @@ def main(page: ft.Page):
                 spacing=2,
             ),
             padding=10,
-            border=ft.border.all(1, "#dddddd"),
+            border=ft.Border.all(1, "#dddddd"),
             border_radius=8,
         )
 
@@ -248,4 +248,4 @@ def main(page: ft.Page):
 
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.run(main)
