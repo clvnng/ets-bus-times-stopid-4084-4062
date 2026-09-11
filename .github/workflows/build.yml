@@ -16,7 +16,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/python-versions@v5
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
@@ -48,7 +48,7 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         pip install "cython<3.0.0" buildozer
 
-    - name: Pre-accept SDK Licenses & Build APK
+    - name: Build APK with Buildozer
       run: |
         yes | buildozer -v android debug
 
