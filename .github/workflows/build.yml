@@ -33,15 +33,17 @@ jobs:
             libgdbm-dev libdb5.3-dev libbz2-dev libexpat1-dev liblzma-dev tk-dev libffi-dev libssl-dev
           pip install --upgrade buildozer cython
 
-      - name: Accept Android SDK Licenses
+      - name: Auto-Accept SDK License in Spec
         run: |
-          mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
-          yes | sdkmanager --sdk_root=$HOME/.buildozer/android/platform/android-sdk --licenses 2>/dev/null || true
+          if grep -q "^android.accept_sdk_license" buildozer.spec; then
+            sed -i 's/^android.accept_sdk_license.*/android.accept_sdk_license = True/' buildozer.spec
+          else
+            echo "android.accept_sdk_license = True" >> buildozer.spec
+          fi
 
       - name: Build with Buildozer
         run: |
-          # Use yes to automatically answer 'y' to any runtime license prompts from Buildozer
-          yes | buildozer -v android debug
+          buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
