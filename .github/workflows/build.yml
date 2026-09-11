@@ -2,25 +2,25 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install System Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -29,28 +29,46 @@ jobs:
             ffmpeg \
             libsdl2-dev \
             libsdl2-image-dev \
-            libsdl2-mixer-dev \
+            libsdl2-mixin-dev \
             libsdl2-ttf-dev \
             libportmidi-dev \
             libswscale-dev \
             libavformat-dev \
             libavcodec-dev \
             zlib1g-dev \
-            openjdk-17-jdk \
-            unzip \
-            zip \
+            libsqlite3-dev \
+            sqlite3 \
+            bzip2 \
+            libbz2-dev \
+            libssl-dev \
+            openssl \
+            libffi-dev \
+            gettext \
+            libltdl-dev \
+            pkg-config \
             autoconf \
+            automake \
             libtool \
-            pkg-config
-          python -m pip install --upgrade pip
-          pip install buildozer Cython
+            zip \
+            unzip
 
-      - name: Build with Buildozer (Auto-Accept SDK License)
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Buildozer & Cython
         run: |
-          yes | buildozer -v android debug
+          python -m pip install --upgrade pip
+          pip install buildozer cython
+
+      - name: Build APK with Buildozer
+        run: |
+          buildozer --accept-sdk-license android debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: etsbustimes-apk
+          name: app-release
           path: bin/*.apk
