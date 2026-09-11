@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android App
 
 on:
   push:
@@ -12,42 +12,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+    - name: Set up Python
+      uses: actions/python-versions@v5
+      with:
+        python-version: '3.11'
 
-      - name: Install Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            git \
-            ffmpeg \
-            libsdl2-dev \
-            libsdl2-image-dev \
-            libsdl2-mixer-dev \
-            libsdl2-ttf-dev \
-            libportmidi-dev \
-            libswscale-dev \
-            libavformat-dev \
-            libavcodec-dev \
-            zlib1g-dev \
-            openjdk-17-jdk \
-            zip \
-            unzip
-          pip install --upgrade pip
-          pip install buildozer cython
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          git \
+          ffmpeg \
+          libsdl2-dev \
+          libsdl2-image-dev \
+          libsdl2-mixer-dev \
+          libsdl2-ttf-dev \
+          libportmidi-dev \
+          libswscale-dev \
+          libavformat-dev \
+          libavcodec-dev \
+          zlib1g-dev \
+          openjdk-17-jdk \
+          autoconf \
+          automake \
+          libtool \
+          pkg-config \
+          cmake
 
-      - name: Build APK with Buildozer
-        run: |
-          buildozer -v android debug
+    - name: Install Buildozer and Cython
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install "cython<3.0.0" buildozer
 
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ets-bus-times-apk
-          path: bin/*.apk
+    - name: Pre-accept SDK Licenses & Build APK
+      run: |
+        yes | buildozer -v android debug
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: package-debug-apk
+        path: bin/*.apk
