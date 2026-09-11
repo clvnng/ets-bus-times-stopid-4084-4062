@@ -1,52 +1,56 @@
-name: Build APK
+name: Build Android APK
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch: {}
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
-  build-android:
-    name: Build for Android
+  build:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: Install System Dependencies & Buildozer
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config \
-            zlib1g-dev libncurses5-dev libncursesw5-dev libreadline-dev libsqlite3-dev \
-            libgdbm-dev libdb5.3-dev libbz2-dev libexpat1-dev liblzma-dev tk-dev libffi-dev libssl-dev
-          pip install --upgrade buildozer cython
+            build-essential \
+            git \
+            ffmpeg \
+            libsdl2-dev \
+            libsdl2-image-dev \
+            libsdl2-mixin-dev \
+            libsdl2-ttf-dev \
+            libportmidi-dev \
+            libswscale-dev \
+            libavformat-dev \
+            libavcodec-dev \
+            zlib1g-dev \
+            openjdk-17-jdk \
+            unzip \
+            zip \
+            autoconf \
+            libtool \
+            pkg-config
+          python -m pip install --upgrade pip
+          pip install buildozer Cython
 
-      - name: Auto-Accept SDK License in Spec
+      - name: Build with Buildozer (Auto-Accept SDK License)
         run: |
-          if grep -q "^android.accept_sdk_license" buildozer.spec; then
-            sed -i 's/^android.accept_sdk_license.*/android.accept_sdk_license = True/' buildozer.spec
-          else
-            echo "android.accept_sdk_license = True" >> buildozer.spec
-          fi
+          yes | buildozer -v android debug
 
-      - name: Build with Buildozer
-        run: |
-          buildozer -v android debug
-
-      - name: Upload APK
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ets-bus-times-apk
+          name: etsbustimes-apk
           path: bin/*.apk
