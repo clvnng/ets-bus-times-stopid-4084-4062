@@ -6,10 +6,7 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 version = 0.1
 
-# gtfs-realtime-bindings is optional - the app falls back to scheduled-only
-# times if it's missing or fails to build for Android. Remove it from this
-# list if the build fails because of it.
-requirements = python3,kivy,protobuf,gtfs-realtime-bindings
+requirements = python3,kivy
 
 orientation = portrait
 fullscreen = 0
